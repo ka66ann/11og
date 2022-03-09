@@ -129,7 +129,7 @@ async function handler(event, context) {
     dpr = 1;
   }
 
-  url = encodeURIComponent(url);
+  url = decodeURIComponent(url);
 
   try {
     if(!isFullUrl(url)) {
