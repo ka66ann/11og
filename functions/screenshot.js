@@ -66,7 +66,7 @@ async function handler(event, context) {
   let viewport = [];
   let withJs = true;
   let screenshotOptions = {
-    fullPage: false
+    fullPage: true
   };
 
   // Manage your own frequency by using a _ prefix and then a hash buster string after your URL
@@ -82,7 +82,7 @@ async function handler(event, context) {
   }
 
   // Set Defaults
-  format = format || "jpeg";
+  format = format || "png";
   aspectratio = aspectratio || "1:1";
   size = size || "small";
   zoom = zoom || "standard";
@@ -148,10 +148,10 @@ async function handler(event, context) {
     return {
       statusCode: 200,
       headers: {
-        "content-type": `image/${format}`
+        "content-type": 'application/json;charset=utf-8'
       },
-      body: output,
-      isBase64Encoded: true
+      body: {b64: output}
+     
     };
   } catch (error) {
     console.log("Error", error);

@@ -1,8 +1,15 @@
 {
   
   "dependencies": {
-    "@netlify/functions": "latest",
-    "chrome-aws-lambda": "latest",
-    "puppeteer-core": "latest"
+  
+    
+  "@netlify/functions": "latest",
+  
+    
+  "chrome-aws-lambda": "latest",
+  
+    
+  "puppeteer-core": "latest"
+  
   }
 }
