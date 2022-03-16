@@ -11,15 +11,16 @@ function isFullUrl(url) {
   }
 }
 
-async function screenshot(url, format, viewportSize, dpr = 1, withJs = true, screenshotOptions = {}) {
+async function screenshot(url, format, viewportSize, dpr = 1, withJs = true) {
   const browser = await chromium.puppeteer.launch({
     executablePath: await chromium.executablePath,
     args: chromium.args,
     defaultViewport: {
       width: viewportSize[0],
       height: viewportSize[1],
-      deviceScaleFactor: parseFloat(dpr),
+      deviceScaleFactor: 2,
     },
+isMobile:true,
     headless: chromium.headless,
   });
 
@@ -31,23 +32,21 @@ async function screenshot(url, format, viewportSize, dpr = 1, withJs = true, scr
 
   // TODO is there a way to bail at timeout and still show what’s rendered on the page?
   let response = await page.goto(url, {
-    waitUntil: ["load", "networkidle0"],
-    timeout: 8500
+    waitUntil: ["load", "networkidle2"],
+fullPage:true
+    //timeout: 8500
   });
   // let statusCode = response.status();
   // TODO handle 404/500 status codes better
 
-  let options = Object.assign({
+  let options = {
+fullPage: true,
     type: format,
-    encoding: "base64",
-    captureBeyondViewport: false,
-  }, screenshotOptions);
+    encoding: "base64"
+  };
 
   if(format === "jpeg") {
     options.quality = 80;
-  }
-  if(options.fullPage) {
-    options.captureBeyondViewport = true;
   }
 
   let output = await page.screenshot(options);
@@ -64,10 +63,6 @@ async function handler(event, context) {
   let [url, size, aspectratio, zoom] = pathSplit;
   let format = "jpeg"; // hardcoded for now
   let viewport = [];
-  let withJs = true;
-  let screenshotOptions = {
-    fullPage: true
-  };
 
   // Manage your own frequency by using a _ prefix and then a hash buster string after your URL
   // e.g. /https%3A%2F%2Fwww.11ty.dev%2F/_20210802/ and set this to today’s date when you deploy
@@ -82,16 +77,21 @@ async function handler(event, context) {
   }
 
   // Set Defaults
-  format = format || "png";
+  format = format || "jpeg";
   aspectratio = aspectratio || "1:1";
   size = size || "small";
   zoom = zoom || "standard";
 
-  if(size === "fullpage") {
-    // ignores aspectratio
-    viewport = [375, 375];
-    screenshotOptions.fullPage = true;
-  } else if(size === "small") {
+  let dpr;
+  if(zoom === "bigger") {
+    dpr = 1.4;
+  } else if(zoom === "smaller") {
+    dpr = 0.71428571;
+  } else if(zoom === "standard") {
+    dpr = 1;
+  }
+
+  if(size === "small") {
     if(aspectratio === "1:1") {
       viewport = [375, 375];
     } else if(aspectratio === "9:16") {
@@ -120,15 +120,6 @@ async function handler(event, context) {
     }
   }
 
-  let dpr;
-  if(zoom === "bigger") {
-    dpr = 1.4;
-  } else if(zoom === "smaller") {
-    dpr = 0.71428571;
-  } else if(zoom === "standard") {
-    dpr = 1;
-  }
-
   url = decodeURIComponent(url);
 
   try {
@@ -140,7 +131,7 @@ async function handler(event, context) {
       throw new Error("Incorrect API usage. Expects one of: /:url/ or /:url/:size/ or /:url/:size/:aspectratio/")
     }
 
-    let output = await screenshot(url, format, viewport, dpr, withJs, screenshotOptions);
+    let output = await screenshot(url, format, viewport, dpr);
 
     // output to Function logs
     console.log(url, format, { viewport }, { size }, { dpr }, { aspectratio });
@@ -148,10 +139,10 @@ async function handler(event, context) {
     return {
       statusCode: 200,
       headers: {
-        "content-type": 'application/json;charset=utf-8'
+        "content-type": `image/${format}`
       },
-      body: {b64: output}
-     
+      body: output,
+      isBase64Encoded: true
     };
   } catch (error) {
     console.log("Error", error);
@@ -159,7 +150,6 @@ async function handler(event, context) {
     return {
       // We need to return 200 here or Firefox won’t display the image
       // HOWEVER a 200 means that if it times out on the first attempt it will stay the default image until the next build.
-      
       statusCode: 200,
       headers: {
         "content-type": "image/svg+xml",
